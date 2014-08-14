@@ -1,11 +1,13 @@
 USE [msdb]
 GO
 
+
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 CREATE PROCEDURE [dbo].[usp_sqlagent_report_email]  @job_id uniqueidentifier, @email_dl nvarchar(255)
 AS
@@ -14,8 +16,12 @@ BEGIN
 -- variables
 declare @email_subject nvarchar(255),
 @sqlagent_job_fail_count int,
+@ssis_job_fail_count int,
 @email_subject_status nvarchar(255),
 @bodyHTML_SQLAGENT nvarchar(MAX), 
+@bodyHTML_SSISDB nvarchar(MAX), 
+@singleHTML_SSISDB nvarchar(MAX),
+@HTML_SSISDB nvarchar(MAX),
 @bodyHTML nvarchar(MAX),
 @job_name nvarchar(255)
 
@@ -23,34 +29,44 @@ declare @email_subject nvarchar(255),
 select @job_name = name from msdb.dbo.sysjobs where job_id=@job_id
 
 --generate sql agent status report body
-set @bodyHTML_SQLAGENT = N'<H3>' + @job_name + ' on ' + reverse(left((reverse(@@servername)),(charindex('-',reverse(@@servername))-1))) + '</H3><br><H4>SQL Agent Steps</H4>' 
-	+ N'<table border = "1">'
-	+ N'<th bgcolor = "#AFDACF">Status</th>'
-	+ N'<th bgcolor = "#AFDACF">Step</th>'
-	+ N'<th bgcolor = "#AFDACF">Step Name</th>'
-	+ N'<th bgcolor = "#AFDACF">Start</th>'
-	+ N'<th bgcolor = "#AFDACF">Duration</th>'
-	+ N'<th bgcolor = "#AFDACF">Type</th>'
-	+ N'<th bgcolor = "#AFDACF">Command</th>'
-	+ N'<th bgcolor = "#AFDACF">Message</th>'
-	+ CAST(( SELECT CASE t2.run_status WHEN 0 THEN '#FF4D4D' WHEN 1 THEN '#8DE28D' ELSE '#FFFF66' END AS [td/@bgcolor]
-	, td = CONVERT(VARCHAR(14), (CASE [t2].[run_status] WHEN 0 THEN 'Failed' WHEN 1 THEN 'Succeeded' WHEN 2 THEN 'Retry' WHEN 3 THEN 'Cancelled'  WHEN 4 THEN 'In Progress' END))
+set @bodyHTML_SQLAGENT = N'<body background="#eff4f3">'
+	+ N'<font face="Arial, Helvetica, sans-serif">'
+	+ N'<table style="border:0px;border-collapse:collapse;width:800px;margin:0px auto">'
+	+ N'<caption style="text-align:left;font-size:16px;font-weight:bold;color:#5e6e65;text-transform:uppercase;padding:10px 0px 0px 0px">'
+    + @job_name + ' on ' + reverse(left((reverse(@@servername)),(charindex('-',reverse(@@servername))-1))) + + '</caption></table>'
+	+ N'<table style="border:0px solid black;border-top:3px solid #ff9900;border-collapse:collapse;width:800px;margin:0px auto">'
+	+ N'<caption style="text-align:left;font-size:13px;font-weight:bold;color:#5e6e65;padding: 15px 0px 5px 0px">SQL AGENT STEPS</caption>'
+	+ N'<tr bgcolor="#AFDACF">'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Status</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Step</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Step Name</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Start</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Duration</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Command</th>'
+	+ N'<th style="padding: 6px 6px 6px 12px;font-size:12px;text-transform:uppercase;color:#5e6e65;border-bottom:1px solid #cdcdcd">Message</th>'
+	+ N'</tr>'
+	+ CAST((SELECT CASE WHEN (ROW_NUMBER() OVER (ORDER BY [t2].[step_id]))%2=1 THEN '#FFF' ELSE '#f7f7f7' END AS [tr/@bgcolor]
+	, CASE t2.run_status WHEN 0 THEN '#FF4D4D' WHEN 1 THEN '#8DE28D' ELSE '#FFFF66' END AS [td/@bgcolor]
+	, 'padding:5px 12px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
+	, td = CONVERT(VARCHAR(14), (CASE [t2].[run_status] WHEN 0 THEN 'Fail' WHEN 1 THEN 'Success' WHEN 2 THEN 'Retry' WHEN 3 THEN 'Cancelled'  WHEN 4 THEN 'In Progress' END))
 	, ''
-	, 'center' as [td/@align]
+	, 'padding:5px 6px 7px 6px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;text-align:center' as [td/@style]
 	, td = CONVERT(VARCHAR(255),[t2].[step_id])
 	, ''
+	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
 	, td = CONVERT(VARCHAR(255),[t2].[step_name])
 	, ''
+	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
 	, td = CONVERT(VARCHAR(255),msdb.dbo.agent_datetime(t2.run_date, t2.run_time))
 	, ''
+	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;text-align:center' as [td/@style]
 	, td = CONVERT(VARCHAR(255),stuff(stuff(replace(str(run_duration,6,0),' ','0'),3,0,':'),6,0,':'))
 	, ''
-	, td = CONVERT(VARCHAR(255),[t4].[subsystem])
+	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
+	, td = CONVERT(VARCHAR(MAX), (case when t4.subsystem = 'SSIS' then reverse(left(reverse(left(t4.command,charindex('.dtsx',t4.command)+4)),charindex('\',reverse(left(t4.command,charindex('.dtsx',t4.command)+4)))-1)) else replace((replace(t4.command,'_','_ ')),'/','/ ')  end))
 	, ''
-	, td = CONVERT(VARCHAR(MAX), (case when t4.subsystem = 'SSIS' then reverse(left(reverse(left(t4.command,charindex('.dtsx',t4.command)+4)),charindex('\',reverse(left(t4.command,charindex('.dtsx',t4.command)+4)))-1)) else t4.command end))
-	, ''
-	, td = CONVERT(VARCHAR(MAX),[t2].[message]
-	)
+	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
+	, td = CONVERT(VARCHAR(MAX),replace(t2.message,'/','/ '))
 	FROM    msdb.dbo.sysjobs t1
     JOIN    msdb.dbo.sysjobhistory t2
             ON t1.job_id = t2.job_id 
@@ -108,10 +124,12 @@ JOIN    (
 			)
 
 
---compose body from sql agent query subject depends on non zero fail counts
-set @bodyHTML = @bodyHTML_SQLAGENT
 
-select @email_subject_status = case when (@sqlagent_job_fail_count = 0) then 'SUCCESS' else (CONVERT(nvarchar(3), @sqlagent_job_fail_count) + ' SQL Agent Exception(s)') end
+
+--compose body from sql agent query and stored proc result from ssisdb, subject depends on non zero fail counts
+set @bodyHTML = @bodyHTML_SQLAGENT + isnull(@bodyHTML_SSISDB,'')
+
+select @email_subject_status = case when (@sqlagent_job_fail_count = 0) then 'SUCCESS' else (CONVERT(nvarchar(3), @sqlagent_job_fail_count) + ' Exception(s)') end
 set @email_subject =  @email_subject_status + ' ' + @job_name + ' SQL Agent Status Report'
 
 
@@ -124,4 +142,6 @@ exec msdb.dbo.sp_send_dbmail
 @body_format = 'HTML';
 
 END
+
+
 GO

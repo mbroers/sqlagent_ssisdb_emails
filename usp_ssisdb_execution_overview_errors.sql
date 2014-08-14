@@ -1,11 +1,17 @@
 USE [msdb]
 GO
 
+/****** Object:  StoredProcedure [dbo].[usp_ssisdb_execution_overview_errors_for_report_email]    Script Date: 8/14/2014 2:40:09 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
+
+
+
+
 
 CREATE PROCEDURE [dbo].[usp_ssisdb_execution_overview_errors_for_report_email] @execution_id int, @HTML_SSISDB nvarchar(max) output, @ssis_job_fail int output
 AS
@@ -73,7 +79,7 @@ set @errors_HTML = N'<table style="border:0px solid black;border-top:3px solid #
 	, td = CONVERT(VARCHAR(MAX), replace((replace([execution_path],'\',' \ ')),'_','_ '))
 	, ''
 	, 'padding:5px 10px 7px 10px;font-size:11px;color:#5e6e65;border-bottom:1px solid #b23535;background-color:#ffffff' as [td/@style]
-	, td = CONVERT(VARCHAR(MAX),[message])
+	, td = CONVERT(VARCHAR(MAX),replace((replace([message],'\','\ ')),'_','_ '))
   FROM [SSISDB].[catalog].[event_messages]
   where operation_id = @execution_id and event_name='OnError'
   FOR XML PATH('tr'), TYPE) as NVARCHAR(MAX)) + N'</table>'; 
@@ -90,5 +96,29 @@ set @ssis_job_fail = @ssis_execution_id_error_count + @ssis_event_onerror_count
 
 END
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 GO
+
+
 

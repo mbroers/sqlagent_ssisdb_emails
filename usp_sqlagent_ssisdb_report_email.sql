@@ -1,11 +1,19 @@
 USE [msdb]
 GO
 
+
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
+
+
+
+
+
+
 
 CREATE PROCEDURE [dbo].[usp_sqlagent_ssisdb_report_email]  @job_id uniqueidentifier, @email_dl nvarchar(255)
 AS
@@ -61,11 +69,10 @@ set @bodyHTML_SQLAGENT = N'<body background="#eff4f3">'
 	, td = CONVERT(VARCHAR(255),stuff(stuff(replace(str(run_duration,6,0),' ','0'),3,0,':'),6,0,':')) 
 	, ''
 	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
-	, td = CONVERT(VARCHAR(MAX), (case when t4.subsystem = 'SSIS' then reverse(left(reverse(left(t4.command,charindex('.dtsx',t4.command)+4)),charindex('\',reverse(left(t4.command,charindex('.dtsx',t4.command)+4)))-1)) else replace(t4.command,'_','_ ') end)) 
+	, td = CONVERT(VARCHAR(MAX), (case when t4.subsystem = 'SSIS' then reverse(left(reverse(left(t4.command,charindex('.dtsx',t4.command)+4)),charindex('\',reverse(left(t4.command,charindex('.dtsx',t4.command)+4)))-1)) else replace((replace(t4.command,'_','_ ')),'/','/ ') end)) 
 	, ''
 	, 'padding:5px 6px 7px 12px;font-size:11px;color:#5e6e65;border-bottom:1px solid #cdcdcd;' as [td/@style]
-	, td = CONVERT(VARCHAR(MAX),[t2].[message] 
-	)
+	, td = CONVERT(VARCHAR(MAX),replace([t2].[message],'/','/ '))
 	FROM    msdb.dbo.sysjobs t1
     JOIN    msdb.dbo.sysjobhistory t2
             ON t1.job_id = t2.job_id 
@@ -204,4 +211,59 @@ exec msdb.dbo.sp_send_dbmail
 
 END
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 GO
+
+
+
