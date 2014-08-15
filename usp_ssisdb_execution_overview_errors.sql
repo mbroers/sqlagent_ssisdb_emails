@@ -79,7 +79,7 @@ set @errors_HTML = N'<table style="border:0px solid black;border-top:3px solid #
 	, td = CONVERT(VARCHAR(MAX), replace((replace([execution_path],'\',' \ ')),'_','_ '))
 	, ''
 	, 'padding:5px 10px 7px 10px;font-size:11px;color:#5e6e65;border-bottom:1px solid #b23535;background-color:#ffffff' as [td/@style]
-	, td = CONVERT(VARCHAR(MAX),replace((replace([message],'\','\ ')),'_','_ '))
+	, td = CONVERT(VARCHAR(MAX), replace((replace((replace([message],'\','\ ')),'_','_ ')),'.','. ')) 
   FROM [SSISDB].[catalog].[event_messages]
   where operation_id = @execution_id and event_name='OnError'
   FOR XML PATH('tr'), TYPE) as NVARCHAR(MAX)) + N'</table>'; 
